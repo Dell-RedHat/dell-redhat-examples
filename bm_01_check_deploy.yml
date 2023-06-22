@@ -1,0 +1,15 @@
+- name: Check connection to guest OS
+  hosts: rhel_hosts
+  gather_facts: false
+  tasks:
+    - name: Waiting for installation to end, it can take time!
+      ansible.builtin.wait_for_connection:
+        timeout: 4800
+        sleep: 60
+
+    - name: Ping host to check status
+      ansible.builtin.ping:
+
+    - name: Setup is ready
+      ansible.builtin.debug:
+        msg: "Setup completed, now you can proceed with post install steps"

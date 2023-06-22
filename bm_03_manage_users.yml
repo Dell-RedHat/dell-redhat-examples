@@ -1,0 +1,28 @@
+---
+- name: Playbook for managing users in the hosts
+  hosts: rhel_hosts
+  become: true
+  vars:
+    default_user:
+      - name: devops
+        password: "redhat"
+
+  tasks:
+    - name: Ensure users are present
+      ansible.builtin.user:
+        name: "{{ item.name }}"
+        create_home: true
+        password: "{{ item.password | password_hash('sha512') }}"
+      loop: "{{ users | default(default_user, true) }}"
+
+    - name: Enable sudo access for users
+      become: true
+      ansible.builtin.lineinfile:
+        path: /etc/sudoers.d/{{ item.name }}
+        line: "{{ item.name }}    ALL=(ALL)       NOPASSWD: ALL"
+        mode: "0600"
+        owner: root
+        group: root
+        create: true
+        state: present
+      loop: "{{ users | default(default_user, true) }}"

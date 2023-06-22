@@ -1,0 +1,27 @@
+---
+- name: Playbook for subscription and patching
+  hosts: rhel_hosts
+  become: true
+  tasks:
+    - name: Add resolution for internal Satellite instance
+      ansible.builtin.lineinfile:
+        line: "{{ satellite_ip }} {{ satellite_host }}"
+        path: /etc/hosts
+      when: satellite_ip is defined and satellite_ip != ""
+
+    - name: Ensure katello is installed
+      ansible.builtin.yum:
+        name: "http://{{ satellite_host }}/pub/katello-ca-consumer-latest.noarch.rpm"
+        disable_gpg_check: true
+        state: present
+
+    - name: Register with activationkey and consume subscriptions
+      community.general.redhat_subscription:
+        state: present
+        activationkey: "{{ satellite_activation_key }}"
+        org_id: "{{ satellite_org_id }}"
+
+    - name: Update system to latest package revisions
+      ansible.builtin.dnf:
+        name: '*'
+        state: latest # noqa package-latest

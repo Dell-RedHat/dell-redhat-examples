@@ -1,0 +1,12 @@
+---
+- name: Customize MOTD of the hosts
+  hosts: rhel_hosts
+  become: true
+  tasks:
+    - name: Add custom motd for the host
+      ansible.builtin.lineinfile:
+        path: /etc/motd
+        line: |
+           This system is provisioned and managed by Ansible Automation Plaftorm on DELL PowerEdge
+           The hostname of the system is {{ hostvars[inventory_hostname].ansible_hostname }} and it is actually running {{ hostvars[inventory_hostname].ansible_distribution }} {{ hostvars[inventory_hostname].ansible_distribution_version }}
+        state: present

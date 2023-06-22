@@ -1,0 +1,38 @@
+lang {{ ks_lang | default('en_US', true) }}
+keyboard {{ ks_keyboard | default('us', true) }}
+timezone {{ ks_timezone | default('Europe/Amsterdam', true) }} --isUtc
+rootpw {{ ks_rootpw | default('delldell', true) | password_hash('sha512') }} --iscrypted
+reboot
+url --noverifyssl --url "https://{{ satellite_ip | default(satellite_host, true) }}/pulp/content/{{ satellite_org_id }}/Library/content/dist/rhel8/8.7/x86_64/baseos/kickstart"
+repo --noverifyssl --name Red_Hat_Enterprise_Linux_8_for_x86_64_-_AppStream_Kickstart_8_7 --baseurl "https://{{ satellite_ip | default(satellite_host, true) }}/pulp/content/{{ satellite_org_id }}/Library/content/dist/rhel8/8.7/x86_64/appstream/kickstart/"
+bootloader --append="rhgb quiet crashkernel=auto"
+ignoredisk --only-use={{ ks_disk | default('sda', true) }}
+zerombr
+clearpart --all --initlabel
+autopart
+{% for int in ks_interfaces %}
+network --activate --device={{ int.network_device }} --bootproto={{ 'static' if int.ip is defined else 'dhcp' }}{% if int.primary is defined and int.primary %} --hostname={{ ks_hostname }}{% endif %}{% if int.vlanid is defined %} --vlanid={{ int.vlanid }}{% endif -%}
+{% if int.ip is defined %} --ip={{ int.ip }} --netmask={{ int.netmask }} --gateway={{ int.gateway }} --nameserver={{ int.nameserver }} {% endif %}
+
+{% endfor %}
+auth --passalgo=sha512 --useshadow
+selinux --enforcing
+firewall --enabled
+firstboot --disable
+%packages
+@Minimal Install
+kexec-tools
+%end
+
+%post --log=/root/ks-post.log
+###############################################################################
+# SSH configuration
+###############################################################################
+
+# allow root login
+sed -i -e 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+# Start cockpit
+systemctl enable --now cockpit.socket
+
+%end

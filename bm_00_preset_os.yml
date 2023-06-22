@@ -1,0 +1,38 @@
+- name: Prepare ISO file
+  hosts: baremetal_hosts
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Set ISO and kickstart file name as facts
+      ansible.builtin.set_fact:
+        ks_destination: "{{ idrac_nfs_share }}/ks-{{ inventory_hostname }}.cfg"
+        os_iso_source: "{{ idrac_nfs_share }}/{{ rhel_iso }}"
+        iso_image_deploy: boot-{{ inventory_hostname }}.iso
+
+    - name: Set final ISO name as fact
+      ansible.builtin.set_fact:
+        iso_destination: "{{ idrac_nfs_share }}/{{ iso_image_deploy }}"
+
+    - name: Block to setup the kickstart and ISO file
+      delegate_to: nfs_server
+      block:
+        - name: Ensure needed packages are in place
+          ansible.builtin.yum:
+            name: lorax
+            state: present
+
+        - name: Fire up the kickstart template
+          ansible.builtin.template:
+            src: templates/rhel-ks.cfg.j2
+            dest: "{{ ks_destination }}"
+            mode: "0755"
+
+        - name: Delete existing ISO file
+          ansible.builtin.file:
+            path: "{{ iso_destination }}"
+            state: absent
+
+        - name: Ensure kickstart file is embedded in RHEL ISO
+          ansible.builtin.command: "mkksiso {{ ks_destination }} {{ os_iso_source }} {{ iso_destination }}"
+          throttle: 1
+          changed_when: true

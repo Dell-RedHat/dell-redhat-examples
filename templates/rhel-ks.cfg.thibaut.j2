@@ -1,0 +1,41 @@
+lang {{ ks_lang | default('en_US', true) }}
+keyboard {{ ks_keyboard | default('us', true) }}
+timezone {{ ks_timezone | default('Europe/Paris', true) }} --isUtc
+rootpw {{ ks_rootpw | default('delldell', true) | password_hash('sha512') }} --iscrypted
+reboot
+{% if ks_major == 7 %}
+url --url "https://{{ satellite.satellite_ip | default(satellite.satellite_host, true) }}/pulp/content/{{ satellite.org_id }}/Library/content/dist/rhel/server/{{ ks_major|default('7') }}/{{ rhel_version | default('7.9') }}/x86_64/kickstart/" --noverifyssl 
+{% else %}
+url --url "https://{{ satellite.satellite_ip | default(satellite.satellite_host, true) }}/pulp/content/{{ satellite.org_id }}/Library/content/dist/rhel{{ ks_major|default('8') }}/{{ rhel_version | default('8.6') }}/x86_64/baseos/kickstart" --noverifyssl
+repo --name "Red_Hat_Enterprise_Linux_{{ ks_major|default('8') }}_for_x86_64_-_AppStream_Kickstart_{{ ks_major|default('8') }}" --baseurl "https://{{ satellite.satellite_ip | default(satellite.satellite_host, true) }}/pulp/content/{{ satellite.org_id }}/Library/content/dist/rhel{{ ks_major|default('8') }}/{{ rhel_version | default('8.6') }}/x86_64/appstream/kickstart" --noverifyssl
+{% endif %}
+bootloader --append="rhgb quiet crashkernel=auto"
+ignoredisk --only-use={{ ks_disk | default('sda', true) }}
+zerombr
+clearpart --all --initlabel
+autopart
+network --activate --device="link" --bootproto="static" --hostname={{ ks_hostname }} --ip={{ ks_ip }} --netmask={{ ks_netmask }} --gateway={{ ks_ipprefix | ansible.utils.ipaddr('last_usable')}} --nameserver=192.168.100.1,192.168.100.2
+
+
+auth --passalgo=sha512 --useshadow
+selinux --enforcing
+firewall --enabled
+firstboot --disable
+%packages
+@Server
+kexec-tools
+cockpit
+%end
+
+%post --log=/root/ks-post.log
+###############################################################################
+# SSH configuration
+###############################################################################
+
+# allow root login
+sed -i -e 's/#PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+
+# Start cockpit
+systemctl enable --now cockpit.socket
+
+%end

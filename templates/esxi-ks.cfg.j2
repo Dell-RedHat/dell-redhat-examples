@@ -1,0 +1,13 @@
+# Accept the VMware End User License Agreement
+vmaccepteula
+
+# Set the root password for the DCUI and Tech Support Mode
+rootpw Delldell1!
+
+# Install on the first local disk available on machine
+install --firstdisk --overwritevmfs --novmfsondisk
+
+# Set the network to DHCP on the preferred network adapter
+network --bootproto=dhcp --device=vmnic5
+
+reboot

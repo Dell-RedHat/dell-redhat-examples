@@ -1,0 +1,74 @@
+---
+- name: Prepare ISO file for ESXi deploy
+  hosts: baremetal_hosts
+  gather_facts: false
+  become: true
+  tasks:
+    - name: Set ISO and kickstart file name as facts
+      ansible.builtin.set_fact:
+        esxi_os_iso_source: "{{ idrac_nfs_share }}/{{ esxi_iso }}"
+        iso_image_deploy: boot-{{ inventory_hostname }}.iso
+
+    - name: Set final ISO name as fact
+      ansible.builtin.set_fact:
+        iso_destination: "{{ idrac_nfs_share }}/{{ iso_image_deploy }}"
+
+    - name: Prepare ISO for ESXi setup
+      delegate_to: nfs_server
+      block:
+        - name: Ensure mount directory exists
+          ansible.builtin.file:
+            state: directory
+            path: "{{ item }}"
+            mode: "0755"
+          loop:
+            - /esxi_cdrom_mount
+            - /esxi_cdrom
+
+        - name: Mount ESXi installer ISO
+          ansible.posix.mount:
+            path: /esxi_cdrom_mount
+            src: "{{ esxi_os_iso_source }}"
+            opts: loop
+            state: mounted
+            fstype: iso9660
+
+        - name: Copy mounted content to another directory
+          ansible.builtin.copy:
+            remote_src: true
+            src: /esxi_cdrom_mount/
+            dest: /esxi_cdrom
+            mode: "0755"
+
+        - name: Unmount the device
+          ansible.posix.mount:
+            path: /esxi_cdrom_mount
+            src: "{{ esxi_os_iso_source }}"
+            opts: loop
+            state: absent
+
+        - name: Fire up template with kickstart configuration
+          ansible.builtin.template:
+            src: esxi-ks.cfg.j2
+            dest: /esxi_cdrom/KS.CFG
+            mode: "0755"
+
+        - name: Replace default config to lookup for kickstart
+          ansible.builtin.lineinfile:
+            path: "{{ item }}"
+            search_string: "kernelopt=cdromBoot runweasel"
+            line: kernelopt=cdromBoot runweasel ks=cdrom:/KS.CFG
+          loop:
+            - /esxi_cdrom/boot.cfg
+            - /esxi_cdrom/efi/boot/boot.cfg
+
+        - name: Rebuild ISO
+          ansible.builtin.shell: >
+              "mkisofs -relaxed-filenames -J -R -o {{ iso_destination }} -b isolinux.bin -c boot.cat -no-emul-boot
+              -boot-load-size 4 -boot-info-table -eltorito-alt-boot -b efiboot.img -no-emul-boot /esxi_cdrom"
+          changed_when: true
+
+        - name: Cleanup temporary directory
+          ansible.builtin.file:
+            path: /esxi_cdrom
+            state: absent
