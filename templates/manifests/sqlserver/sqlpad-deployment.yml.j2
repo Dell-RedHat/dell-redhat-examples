@@ -1,0 +1,64 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: sqlpad-sqlserver
+  name: sqlpad-sqlserver
+  namespace: sqlserver
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: sqlpad-sqlserver
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: sqlpad-sqlserver
+        deployment: sqlpad-sqlserver
+    spec:
+      serviceAccountName: sqlserver-sa
+      securityContext:
+        privileged: true
+        fsGroup: 2
+      containers:
+      - image: docker.io/sqlpad/sqlpad
+        imagePullPolicy: Always
+        serviceAccountName: sqlserver-sa
+        securityContext:
+          privileged: true
+          fsGroup: 2
+        name: sqlpad-sqlserver
+        env:
+        - name: SQLPAD_AUTH_DISABLED
+          value: "true"
+        - name: SQLPAD_CONNECTIONS__sqlserverdemo__name
+          value: "SQLSERVER Demo"
+        - name: SQLPAD_CONNECTIONS__sqlserverdemo__driver
+          value: "sqlserver"
+        - name: SQLPAD_CONNECTIONS__sqlserverdemo__host
+          value: "sqlserver-service.sqlserver.svc.cluster.local"
+        - name: SQLPAD_CONNECTIONS__sqlserverdemo__username
+          value: "SA"
+        - name: SQLPAD_CONNECTIONS__sqlserverdemo__password
+          value: "YourStrong!Passw0rd"
+        - name: SQLPAD_CONNECTIONS__sqlserverdemo__database
+          value: "sqlserverdemo"
+        ports:
+        - containerPort: 3000
+          protocol: TCP
+        resources: {}
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30

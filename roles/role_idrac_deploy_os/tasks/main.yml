@@ -1,0 +1,110 @@
+---
+# tasks file for role_idrac_deploy_os
+
+- name: Ping target
+  ansible.builtin.ping:
+
+- name: Reboot server
+  dellemc.openmanage.redfish_powerstate:
+    baseuri: "{{ idrac_ip | default(ansible_host, true) }}"
+    username: "{{ idrac_username | default(ansible_user, true) }}"
+    password: "{{ idrac_password | default(ansible_password, true) }}"
+    validate_certs: "{{ idrac_validate_certs | default(false, true) }}"
+    ca_path: "{{ idrac_ca_path | default(omit, true) }}"
+    reset_type: "ForceRestart"
+
+- name: Lifecycle Controller status
+  dellemc.openmanage.idrac_lifecycle_controller_status_info:
+    idrac_ip: "{{ idrac_ip | default(ansible_host, true) }}"
+    idrac_user: "{{ idrac_username | default(ansible_user, true) }}"
+    idrac_password: "{{ idrac_password | default(ansible_password, true) }}"
+    validate_certs: "{{ idrac_validate_certs | default(false, true) }}"
+    ca_path: "{{ idrac_ca_path | default(omit, true) }}"
+  register: lc
+
+- name: Print actual status of the Lifecycle Controller
+  ansible.builtin.debug:
+    msg: "{{ lc.lc_status_info }}"
+
+- name: Reset iDRAC IF NECESSARY
+  when: not lc.lc_status_info is defined or not lc.lc_status_info.LCReady
+  block:
+    - name: Reset iDRAC
+      dellemc.openmanage.idrac_reset:
+        idrac_ip: "{{ idrac_ip | default(ansible_host, true) }}"
+        idrac_user: "{{ idrac_username | default(ansible_user, true) }}"
+        idrac_password: "{{ idrac_password | default(ansible_password, true) }}"
+        validate_certs: "{{ idrac_validate_certs | default(false, true) }}"
+        ca_path: "{{ idrac_ca_path | default(omit, true) }}"
+      register: reset
+
+    - name: Wait for reset if the controller was ready but non responding
+      ansible.builtin.pause:
+        minutes: 3
+
+- name: Wait until LC_status is "READY"
+  dellemc.openmanage.idrac_lifecycle_controller_status_info:
+    idrac_ip: "{{ idrac_ip | default(ansible_host, true) }}"
+    idrac_user: "{{ idrac_username | default(ansible_user, true) }}"
+    idrac_password: "{{ idrac_password | default(ansible_password, true) }}"
+    validate_certs: "{{ idrac_validate_certs | default(false, true) }}"
+    ca_path: "{{ idrac_ca_path | default(omit, true) }}"
+  register: lc_status
+  until: lc_status.lc_status_info is defined and lc_status.lc_status_info.LCReady
+  retries: 100
+  delay: 20
+
+# - name: Lifecycle Controller status
+#   dellemc.openmanage.idrac_lifecycle_controller_status_info:
+#     idrac_ip: "{{ idrac_ip | default(ansible_host, true) }}"
+#     idrac_user: "{{ idrac_username | default(ansible_user, true) }}"
+#     idrac_password: "{{ idrac_password | default(ansible_password, true) }}"
+#     validate_certs: "{{ idrac_validate_certs | default(false, true) }}"
+#     ca_path: "{{ idrac_ca_path | default(omit, true) }}"
+#   register: lc
+
+# - name: Print actual status of the Lifecycle Controller
+#   ansible.builtin.debug:
+#     msg: "{{ lc.lc_status_info }}"
+
+# # Introduced this workaround due to some inconsistencies between the test iDRACs
+# - name: Reset iDRAC
+#   dellemc.openmanage.idrac_reset:
+#     idrac_ip: "{{ idrac_ip | default(ansible_host, true) }}"
+#     idrac_user: "{{ idrac_username | default(ansible_user, true) }}"
+#     idrac_password: "{{ idrac_password | default(ansible_password, true) }}"
+#     validate_certs: "{{ idrac_validate_certs | default(false, true) }}"
+#     ca_path: "{{ idrac_ca_path | default(omit, true) }}"
+#   register: reset
+
+# - name: Wait for reset if the controller was ready but non responding
+#   ansible.builtin.pause:
+#     minutes: 4
+
+# - name: Wait until LC_status is "READY"
+#   dellemc.openmanage.idrac_lifecycle_controller_status_info:
+#     idrac_ip: "{{ idrac_ip | default(ansible_host, true) }}"
+#     idrac_user: "{{ idrac_username | default(ansible_user, true) }}"
+#     idrac_password: "{{ idrac_password | default(ansible_password, true) }}"
+#     validate_certs: "{{ idrac_validate_certs | default(false, true) }}"
+#     ca_path: "{{ idrac_ca_path | default(omit, true) }}"
+#   register: lc_status
+#   until: lc_status.lc_status_info is defined and lc_status.lc_status_info.LCReady
+#   retries: 100
+#   delay: 20
+
+- name: Deploy ISO from NFS
+  dellemc.openmanage.idrac_os_deployment:
+    idrac_ip: "{{ idrac_ip | default(ansible_host, true) }}"
+    idrac_user: "{{ idrac_username | default(ansible_user, true) }}"
+    idrac_password: "{{ idrac_password | default(ansible_password, true) }}"
+    share_name: "{{ idrac_nfs_host }}:/{{ idrac_nfs_share }}"
+    iso_image: "{{ idrac_deploy_iso | default('boot-' + inventory_hostname + '.iso') }}"
+    expose_duration: "{{ idrac_expose_duration | default(300, true) }}"
+    validate_certs: "{{ idrac_validate_certs | default(false, true) }}"
+    ca_path: "{{ idrac_ca_path | default(omit, true) }}"
+  when: lc_status.lc_status_info.LCReady or lc.lc_status_info.LCReady
+  register: deploy_status
+  until: deploy_status.changed
+  retries: 100
+  delay: 20

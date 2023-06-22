@@ -1,0 +1,17 @@
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: vxflexos-test-pod
+spec:
+  volumes:
+    - name: vxflexos-pvc-mount
+      persistentVolumeClaim:
+        claimName: vxflexos-pvc
+  containers:
+    - name: vxflexos-test
+      image: docker.io/centos:latest
+      command: [ "/bin/sleep", "3600" ]
+      volumeMounts:
+        - name: vxflexos-pvc-mount
+          mountPath: /vflexos-data

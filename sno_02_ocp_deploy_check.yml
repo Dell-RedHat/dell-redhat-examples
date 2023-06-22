@@ -1,0 +1,36 @@
+---
+- name: Installation check playbook
+  hosts: baremetal_hosts
+  gather_facts: false
+  tasks:
+    - name: Check OCP Deployment status
+      delegate_to: nfs_server
+      block:
+        - name: Set workdir as fact
+          ansible.builtin.set_fact:
+            working_directory: "{{ idrac_nfs_share }}/{{ ocp_workdir | default('openshift', true) }}/{{ inventory_hostname }}"
+
+        - name: Check OCP setup status
+          ansible.builtin.shell: >
+            {{ working_directory }}/openshift-install
+            --dir={{ working_directory }}/{{ ocp_cluster_name }}
+            --log-level debug
+            wait-for install-complete
+          changed_when: true
+          register: ocp_setup_output
+          retries: 6
+          until: ocp_setup_output.stderr.find("Cluster is initialized") != -1
+
+        - name: Get kubeadmin credentials
+          ansible.builtin.slurp:
+            path: "{{ working_directory }}/{{ ocp_cluster_name }}/auth/kubeadmin-password"
+          register: kubeadmin_password
+
+        - name: Print connection details
+          ansible.builtin.debug:
+            msg:
+              - "***************************************************************************************"
+              - Setup is complete, you can access your cluster using the following information:
+              - Console URL: https://console-openshift-console.apps.{{ ocp_cluster_name }}.{{ ocp_cluster_domain }}
+              - Usename: kubeadmin
+              - Password: "{{ kubeadmin_password.content | b64decode }}"

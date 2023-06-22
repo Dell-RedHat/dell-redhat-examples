@@ -1,0 +1,64 @@
+---
+- name: Integrating Dell Powerflex Storage with Openshift Container Platform - Remove Openshift Virtualization
+  hosts: baremetal_hosts
+  gather_facts: false
+  tasks:
+    - name: Delegate OCP login operations to localhost
+      delegate_to: localhost
+      block:
+        - name: Set relevant facts for OCP Cluster
+          ansible.builtin.set_fact:
+            ocp_api_url: https://api.{{ ocp_cluster_name }}.{{ ocp_cluster_domain }}:6443
+
+        - name: Login into OpenShift Container Platform cluster
+          redhat.openshift.openshift_auth:
+            host: "{{ ocp_api_url }}"
+            username: "{{ lookup('env', 'K8S_AUTH_USERNAME') }}"
+            password: "{{ lookup('env', 'K8S_AUTH_PASSWORD') }}"
+            validate_certs: false
+          register: openshift_auth_results
+
+        - name: Retrieving OCP api_key
+          ansible.builtin.set_fact:
+            ocp_sno_api_key: "{{ openshift_auth_results.openshift_auth.api_key }}"
+
+    - name: Delegate OCP operations to localhost
+      delegate_to: localhost
+      module_defaults:
+        redhat.openshift.k8s:
+          host: "{{ ocp_api_url }}"
+          api_key: "{{ ocp_sno_api_key }}"
+          validate_certs: false
+          state: absent
+          wait: true
+      block:
+
+        - name: Remove OCP Virt StorageProfile for DELL CSI
+          redhat.openshift.k8s:
+            definition: "{{ lookup('ansible.builtin.template', item) | from_yaml }}"
+          loop:
+            - manifests/openshift-virtualization/ocp-virtualization-storageprofiledell.yml.j2
+
+        - name: Remove Openshift Virtualization HCO
+          redhat.openshift.k8s:
+            definition: "{{ lookup('ansible.builtin.template', item) | from_yaml }}"
+          loop:
+            - manifests/openshift-virtualization/ocp-virtualization-hyperconverged.yml.j2
+
+        - name: Remove OCP Virtualization operator
+          redhat.openshift.k8s:
+            definition: "{{ lookup('ansible.builtin.template', item) | from_yaml }}"
+          loop:
+            - manifests/openshift-virtualization/ocp-virtualization-subscription.yml.j2
+
+        - name: Remove OCP Virtualization operator
+          redhat.openshift.k8s:
+            definition: "{{ lookup('ansible.builtin.template', item) | from_yaml }}"
+          loop:
+            - manifests/openshift-virtualization/ocp-virtualization-operatorgroup.yml.j2
+
+        - name: Remove namespace for OCP Virtualization
+          redhat.openshift.k8s:
+            definition: "{{ lookup('ansible.builtin.template', item) | from_yaml }}"
+          loop:
+            - manifests/openshift-virtualization/ocp-virtualization-namespace.yml.j2

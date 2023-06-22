@@ -1,0 +1,4 @@
+# Cluster specific variables
+# ocp_cluster_name: '' # Name of the OCP Cluster
+# ocp_cluster_domain: '' # Domain of the OCP Cluster
+# ocp_setup_device: '' # iDRAC clean block device to install OCP - Defaults to /dev/sda

@@ -1,0 +1,50 @@
+---
+apiVersion: storage.dell.com/v1
+kind: CSIVXFlexOS
+metadata:
+  name: vxflexos-driver
+  namespace: powerflex
+spec:
+  driver:
+    authSecret: sdc-repo-creds
+    common:
+      envs:
+        - name: X_CSI_VXFLEXOS_ENABLELISTVOLUMESNAPSHOT
+          value: 'false'
+        - name: X_CSI_VXFLEXOS_ENABLESNAPSHOTCGDELETE
+          value: 'false'
+        - name: X_CSI_DEBUG
+          value: 'true'
+        - name: X_CSI_ALLOW_RWO_MULTI_POD_ACCESS
+          value: 'false'
+      image: >-
+        docker.io/dellemc/csi-vxflexos@sha256:2f291e179c88c22fbc253b198bf0fcee660c2f70902fe779695dcdd99c622c40
+      imagePullPolicy: IfNotPresent
+    initContainers:
+      - envs:
+          - name: MDM
+            value: '{{ powerflex_mdm_ip }}'
+        image: >-
+          docker.io/dellemc/sdc@sha256:dcef857bc10039a9274b3ca042d0e7f50eb184166628a0ec27f11b885d88fe30
+        imagePullPolicy: IfNotPresent
+        name: sdc
+    node:
+      envs:
+        - name: X_CSI_APPROVE_SDC_ENABLED
+          value: 'false'
+        - name: X_CSI_RENAME_SDC_ENABLED
+          value: 'false'
+        - name: X_CSI_RENAME_SDC_PREFIX
+          value: sdc-test
+    sideCars:
+      - envs:
+          - name: HOST_PID
+            value: '1'
+          - name: MDM
+            value: '{{ powerflex_mdm_ip }}'
+        name: sdc-monitor
+    configVersion: v2.6.0
+    dnsPolicy: ClusterFirstWithHostNet
+    forceUpdate: false
+    fsGroupPolicy: File
+    replicas: 1

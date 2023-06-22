@@ -1,0 +1,8 @@
+apiVersion: cdi.kubevirt.io/v1beta1
+kind: StorageProfile
+metadata:
+  name: vxflexos-storage-class
+spec:
+  claimPropertySets:
+    - accessModes:
+        - ReadWriteOnce

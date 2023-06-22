@@ -1,0 +1,3 @@
+## Common variables for baremetal deploy and OCP setup
+# idrac_nfs_host: ''      # NFS Hostname or IP
+# idrac_nfs_share: ''     # Absolute path of the exported folder on NFS server

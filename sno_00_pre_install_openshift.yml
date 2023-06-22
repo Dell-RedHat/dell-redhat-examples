@@ -1,0 +1,109 @@
+---
+- name: Pre installation playbook
+  hosts: baremetal_hosts
+  gather_facts: false
+  tasks:
+    - name: Set workdir as fact
+      ansible.builtin.set_fact:
+        working_directory: "{{ idrac_nfs_share }}/{{ ocp_workdir | default('openshift', true) }}/{{ inventory_hostname }}"
+        ocp_client_url: https://mirror.openshift.com/pub/openshift-v4/clients/ocp
+        ocp_client_filename: openshift-client-linux.tar.gz
+        ocp_install_filename: openshift-install-linux.tar.gz
+        ocp_version: "{{ ocp_version | default('stable-4.11', true) }}"
+        ocp_arch: "{{ ocp_arch | default('x86_64', true) }}"
+
+    - name: Block to setup the kickstart and ISO file
+      delegate_to: nfs_server
+      delegate_facts: true
+      block:
+        - name: Remove Working Directory If Already Exists
+          ansible.builtin.file:
+            path: "{{ working_directory }}"
+            state: absent
+
+        - name: Create directoy
+          ansible.builtin.file:
+            path: "{{ working_directory }}"
+            recurse: true
+            state: directory
+            mode: "0755"
+
+        - name: Unpack the oc client
+          ansible.builtin.unarchive:
+            src: "{{ ocp_client_url }}/{{ ocp_version }}/{{ ocp_client_filename }}"
+            dest: "{{ working_directory }}/"
+            mode: "0755"
+            remote_src: true
+
+        - name: Unpack the Openshift Installer
+          ansible.builtin.unarchive:
+            src: "{{ ocp_client_url }}/{{ ocp_version }}/{{ ocp_install_filename }}"
+            dest: "{{ working_directory }}/"
+            mode: "0755"
+            remote_src: true
+
+        - name: Fetching ISO URL
+          ansible.builtin.shell: |
+            set -o pipefail
+            {{ working_directory }}/openshift-install coreos print-stream-json | grep location | grep "{{ ocp_arch }}" | grep iso | cut -d\" -f4
+          register: iso_url
+          changed_when: false
+
+        - name: Download the Core OS ISO
+          ansible.builtin.get_url:
+            url: "{{ iso_url.stdout }}"
+            dest: "{{ working_directory }}/rhcos-live.iso"
+            mode: "0755"
+
+        - name: Create Cluster directory
+          ansible.builtin.file:
+            path: "{{ working_directory }}/{{ ocp_cluster_name }}"
+            state: directory
+            mode: "0755"
+
+        - name: Copy configuration file
+          ansible.builtin.template:
+            src: install-config.yaml.j2
+            dest: "{{ working_directory }}/{{ ocp_cluster_name }}/install-config.yaml"
+            mode: "0755"
+
+        - name: Ensure Podman is installed
+          ansible.builtin.dnf:
+            name: podman
+            state: latest # noqa package-latest
+
+        - name: Generate manifests
+          ansible.builtin.shell: >
+            {{ working_directory }}/openshift-install
+            --dir={{ working_directory }}/{{ ocp_cluster_name }} create single-node-ignition-config
+          changed_when: true
+
+        - name: Run Podman container to embed manifest
+          containers.podman.podman_container:
+            name: "coreos-installer-patch-{{ inventory_hostname }}"
+            image: quay.io/coreos/coreos-installer:release
+            remove: true
+            command: >
+              iso ignition embed
+              -fi {{ ocp_cluster_name }}/bootstrap-in-place-for-live-iso.ign rhcos-live.iso
+              -o {{ ocp_cluster_name }}/rhcos-live-{{ inventory_hostname }}.iso
+            volume:
+              - /dev:/dev
+              - /run/udev:/run/udev
+              - "{{ working_directory }}:/data"
+            workdir: /data
+            privileged: true
+
+        - name: Get kubeadmin credentials
+          ansible.builtin.slurp:
+            path: "{{ working_directory }}/{{ ocp_cluster_name }}/auth/kubeadmin-password"
+          register: kubeadmin_password
+
+        - name: Print connection details
+          ansible.builtin.debug:
+            msg:
+              - "***************************************************************************************"
+              - Setup will start shortly, these are the connection details once it finishes:
+              - Console URL: https://console-openshift-console.apps.{{ ocp_cluster_name }}.{{ ocp_cluster_domain }}
+              - Usename: kubeadmin
+              - Password: "{{ kubeadmin_password.content | b64decode }}"

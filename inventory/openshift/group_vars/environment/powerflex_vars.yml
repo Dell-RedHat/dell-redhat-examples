@@ -1,0 +1,8 @@
+# powerflex_mdm_ip: ''              # List of ip address(es) for the management device
+# powerflex_namespace: ''           # name of the namespace to be used for testing powerflex storage access in OpenShift, defaults to *powerflex*
+# powerflex_system_id: ''           # System ID of the powerflex cluster. get this from the powerflex SDS .
+# powerflex_storagepool: ''         # Name of storage pool to use on the Powerflex SDS
+# powerflex_protectiondomain: ''    # Name of protection domain on the Powerflex SDS
+# powerflex_username: ''            # the username account to be used to logon onto the Powerflex API Gateway
+# powerflex_password: ''            # Password for the username account to be used to logon onto the Powerflex API Gateway
+# powerflex_endpoint: ''            # Specify the IP address(s) of the Powerflex API Gateway

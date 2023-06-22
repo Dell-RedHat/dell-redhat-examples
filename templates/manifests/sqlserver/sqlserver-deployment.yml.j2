@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sqlserver-deployment
+  namespace: sqlserver
+  labels:
+    app: sqlserver
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: sqlserver
+  template:
+    metadata:
+      labels:
+        app: sqlserver
+    spec:
+      volumes:
+        - name: sqlserver-pvc-mount
+          persistentVolumeClaim:
+            claimName: sqlserver-pvc
+      serviceAccountName: sqlserver-sa
+      securityContext:
+        privileged: true
+        fsGroup: 2
+      containers:
+      - name: sqlserver
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        ports:
+        - containerPort: 1433
+        serviceAccountName: sqlserver-sa
+        securityContext:
+          privileged: true
+          fsGroup: 2
+        env:
+        - name: ACCEPT_EULA
+          value: "Y"
+        - name: SA_PASSWORD
+          value: "YourStrong!Passw0rd"
+        resources:
+          requests:
+            memory: "2Gi"
+        volumeMounts:
+          - name: sqlserver-pvc-mount
+            mountPath: /var/opt/mssql

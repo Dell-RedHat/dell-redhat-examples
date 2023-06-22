@@ -1,0 +1,176 @@
+apiVersion: kubevirt.io/v1
+kind: VirtualMachine
+metadata:
+  annotations:
+    kubemacpool.io/transaction-timestamp: '2023-05-31T11:32:57.783355185Z'
+    vm.kubevirt.io/validations: |
+      [
+        {
+          "name": "minimal-required-memory",
+          "path": "jsonpath::.spec.domain.resources.requests.memory",
+          "rule": "integer",
+          "message": "This VM requires more memory.",
+          "min": 2147483648
+        }, {
+          "name": "windows-virtio-bus",
+          "path": "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+          "valid": "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+          "rule": "enum",
+          "message": "virtio disk bus type has better performance, install virtio drivers in VM and change bus type",
+          "values": ["virtio"],
+          "justWarning": true
+        }, {
+          "name": "windows-disk-bus",
+          "path": "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+          "valid": "jsonpath::.spec.domain.devices.disks[*].disk.bus",
+          "rule": "enum",
+          "message": "disk bus has to be either virtio or sata or scsi",
+          "values": ["virtio", "sata", "scsi"]
+        }, {
+          "name": "windows-cd-bus",
+          "path": "jsonpath::.spec.domain.devices.disks[*].cdrom.bus",
+          "valid": "jsonpath::.spec.domain.devices.disks[*].cdrom.bus",
+          "rule": "enum",
+          "message": "cd bus has to be sata",
+          "values": ["sata"]
+        }
+      ]
+  creationTimestamp: '2023-05-31T11:32:57Z'
+  generation: 1
+  labels:
+    app: windows-server-vm
+    vm.kubevirt.io/template: windows2k19-server-medium
+    vm.kubevirt.io/template.revision: '1'
+    vm.kubevirt.io/template.version: v0.23.5
+    vm.kubevirt.io/template.namespace: openshift
+  name: windows-server-vm
+  namespace: demo-vm
+spec:
+  dataVolumeTemplates:
+    - metadata:
+        creationTimestamp: null
+        name: windows-server-vm-installation-cdrom
+        namespace: demo-vm
+      spec:
+        preallocation: false
+        source:
+          http:
+            url: http://{{ hostvars['nfs_server'].ansible_host }}/ocpvirt/windows-server-2019-setup.iso
+        storage:
+          resources:
+            requests:
+              storage: 10Gi
+          storageClassName: vxflexos-storage-class
+    - metadata:
+        creationTimestamp: null
+        name: windows-server-vm
+        namespace: demo-vm
+      spec:
+        preallocation: false
+        source:
+          blank: {}
+        storage:
+          resources:
+            requests:
+              storage: 60Gi
+          storageClassName: vxflexos-storage-class
+  running: true
+  template:
+    metadata:
+      annotations:
+        vm.kubevirt.io/flavor: medium
+        vm.kubevirt.io/os: windows10
+        vm.kubevirt.io/workload: desktop
+      creationTimestamp: null
+      labels:
+        kubevirt.io/domain: windows-server-vm
+        kubevirt.io/size: medium
+    spec:
+      domain:
+        clock:
+          timer:
+            hpet:
+              present: false
+            hyperv: {}
+            pit:
+              tickPolicy: delay
+            rtc:
+              tickPolicy: catchup
+          utc: {}
+        cpu:
+          cores: 4
+          sockets: 1
+          threads: 1
+        devices:
+          disks:
+            - bootOrder: 1
+              disk:
+                bus: sata
+              name: rootdisk
+            - bootOrder: 2
+              cdrom:
+                bus: sata
+              name: installation-cdrom
+            - bootOrder: 3
+              cdrom:
+                bus: sata
+              name: windows-drivers-disk
+            - cdrom:
+                bus: sata
+              name: sysprep
+          inputs:
+            - bus: usb
+              name: tablet
+              type: tablet
+          interfaces:
+            - macAddress: '02:ee:1d:00:00:05'
+              masquerade: {}
+              model: e1000e
+              name: default
+        features:
+          acpi: {}
+          apic: {}
+          hyperv:
+            frequencies: {}
+            ipi: {}
+            reenlightenment: {}
+            relaxed: {}
+            reset: {}
+            runtime: {}
+            spinlocks:
+              spinlocks: 8191
+            synic: {}
+            synictimer:
+              direct: {}
+            tlbflush: {}
+            vapic: {}
+            vpindex: {}
+          smm:
+            enabled: true
+        firmware:
+          bootloader:
+            bios: {}
+        machine:
+          type: pc-q35-rhel8.6.0
+        resources:
+          requests:
+            memory: 16Gi
+      networks:
+        - name: default
+          pod: {}
+      terminationGracePeriodSeconds: 3600
+      volumes:
+        - dataVolume:
+            name: windows-server-vm
+          name: rootdisk
+        - dataVolume:
+            name: windows-server-vm-installation-cdrom
+          name: installation-cdrom
+        - containerDisk:
+            image: >-
+              registry.redhat.io/container-native-virtualization/virtio-win@sha256:df46f756a93ff7af86c64d20bc3b15876fae816658d56371c412c84fdbc07efe
+          name: windows-drivers-disk
+        - name: sysprep
+          sysprep:
+            configMap:
+              name: sysprep-config-windows-server-vm

@@ -1,0 +1,8 @@
+# ocp_workdir: ''             # Folder name to store OCP related files into, defaults to *openshift*
+# ocp_pull_secret: ''         # Pull secret needed for downloading OCP Images - Can be retrieved here https://console.redhat.com/openshift/install/pull-secret
+# ocp_coreos_ssh_key: ''      # Public key of the core user on the Single Node Host, needed for SSH access in case of troubleshooting during setup
+# ocp_version: ''             # OCP version to install - Optional, defaults to 4.11 stable. Versions are available here https://mirror.openshift.com/pub/openshift-v4/clients/ocp/
+# ocp_arch: ''                # OCP Architecture - Optional,  defaults to x86_64
+# ocp_admin_username:         # OCP admin username, defaults to kubeadmin
+# ocp_admin_password:         # OCP admin password, if not provided will be fetched by the installer
+# ocp_api_url: ''             # API URL to interact with OCP cluster

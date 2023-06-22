@@ -1,0 +1,51 @@
+- name: Integrating Dell Powerflex Storage with Openshift Container Platform - Deploy Windows Server VM
+  hosts: baremetal_hosts
+  gather_facts: false
+  tasks:
+    - name: Delegate OCP login operations to localhost
+      delegate_to: localhost
+      block:
+        - name: Set relevant facts for OCP Cluster
+          ansible.builtin.set_fact:
+            ocp_api_url: https://api.{{ ocp_cluster_name }}.{{ ocp_cluster_domain }}:6443
+
+        - name: Login into OpenShift Container Platform cluster
+          redhat.openshift.openshift_auth:
+            host: "{{ ocp_api_url }}"
+            username: "{{ lookup('env', 'K8S_AUTH_USERNAME') }}"
+            password: "{{ lookup('env', 'K8S_AUTH_PASSWORD') }}"
+            validate_certs: false
+          register: openshift_auth_results
+
+        - name: Retrieving OCP api_key
+          ansible.builtin.set_fact:
+            ocp_sno_api_key: "{{ openshift_auth_results.openshift_auth.api_key }}"
+
+    - name: Delegate OCP operations to localhost
+      delegate_to: localhost
+      module_defaults:
+        redhat.openshift.k8s:
+          host: "{{ ocp_api_url }}"
+          api_key: "{{ ocp_sno_api_key }}"
+          validate_certs: false
+      block:
+        - name: Create namespace for Windows VM
+          redhat.openshift.k8s:
+            state: present
+            definition: "{{ lookup('ansible.builtin.template', item) | from_yaml }}"
+          loop:
+            - manifests/virtual-machine/windows-vm-namespace.yml.j2
+
+        - name: Create Sysprep configmap with Autounattended.xml file
+          redhat.openshift.k8s:
+            state: present
+            definition: "{{ lookup('ansible.builtin.template', item) | from_yaml }}"
+          loop:
+            - manifests/virtual-machine/windows-vm-sysprep.yml.j2
+
+        - name: Create Windows VM
+          redhat.openshift.k8s:
+            state: present
+            definition: "{{ lookup('ansible.builtin.template', item) | from_yaml }}"
+          loop:
+            - manifests/virtual-machine/windows-vm-template.yml.j2

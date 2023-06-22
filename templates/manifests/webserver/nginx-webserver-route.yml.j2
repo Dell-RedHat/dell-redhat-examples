@@ -1,0 +1,13 @@
+kind: Route
+apiVersion: route.openshift.io/v1
+metadata:
+  name: demo-nginx
+  namespace: demo-webserver
+spec:
+  to:
+    kind: Service
+    name: demo-nginx
+    weight: 100
+  port:
+    targetPort: http
+  wildcardPolicy: None

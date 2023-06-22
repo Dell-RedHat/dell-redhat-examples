@@ -1,0 +1,14 @@
+---
+- name: Deploy Single Node Openshift on Dell PowerEdge
+  hosts: baremetal_hosts
+  gather_facts: false
+  become: true
+  connection: local
+  vars:
+    ansible_python_interpreter: '{{ ansible_playbook_python }}'
+  tasks:
+    - name: Deploy OCP ISO
+      ansible.builtin.include_role:
+        name: role_idrac_deploy_os
+      vars:
+        idrac_deploy_iso: openshift/{{ inventory_hostname }}/{{ ocp_cluster_name }}/rhcos-live-{{ inventory_hostname }}.iso

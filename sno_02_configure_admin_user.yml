@@ -1,0 +1,78 @@
+- name: Integrating Dell Powerflex Storage with Openshift Container Platform | Configuring authentication
+  hosts: baremetal_hosts
+  gather_facts: false
+
+  tasks:
+    - name: Set relevant facts for OCP Cluster
+      ansible.builtin.set_fact:
+        ocp_api_url: https://api.{{ ocp_cluster_name }}.{{ ocp_cluster_domain }}:6443
+        working_directory: "{{ idrac_nfs_share }}/{{ ocp_workdir | default('openshift', true) }}/{{ inventory_hostname }}"
+
+    - name: Retrieve OCP Credentials
+      delegate_to: nfs_server
+      block:
+        - name: Get kubeadmin credentials
+          ansible.builtin.slurp:
+            path: "{{ working_directory }}/{{ ocp_cluster_name }}/auth/kubeadmin-password"
+          register: kubeadmin_password
+
+        - name: Set kubeadmin password as fact
+          ansible.builtin.set_fact:
+            kubeadmin_pwd: "{{ kubeadmin_password.content | b64decode }}"
+      ## when: ocp_admin_password is not defined
+
+    - name: Login into OpenShift Container Platform cluster
+      delegate_to: localhost
+      block:
+        - name: Login into OpenShift Container Platform cluster
+          redhat.openshift.openshift_auth:
+            host: "{{ ocp_api_url }}"
+            username: "{{ ocp_admin_username | default('kubeadmin', true) }}"
+            password: "{{ ocp_admin_password | default(kubeadmin_pwd, true) }}"
+            validate_certs: false
+          register: openshift_auth_results
+
+        - name: Retrieving OCP api_key
+          ansible.builtin.set_fact:
+            ocp_sno_api_key: "{{ openshift_auth_results.openshift_auth.api_key }}"
+
+        - name: Generate htpasswd file
+          community.general.htpasswd:
+            path: /tmp/htpasswd
+            name: "{{ ocp_admin_username | default('admin', true) }}"
+            password: "{{ ocp_admin_password | default('Password01!', true) }}"
+            mode: "0640"
+
+        - name: Retrieve htpasswd content
+          ansible.builtin.slurp:
+            src: /tmp/htpasswd
+          register: pwd_file
+
+        - name: Store htpasswd file as fact
+          ansible.builtin.set_fact:
+            ocp_user_htpasswd: "{{ pwd_file['content'] }}"
+
+        - name: Create OCP admin user and configure auth
+          redhat.openshift.k8s:
+            state: present
+            apply: true
+            definition: "{{ lookup('ansible.builtin.template', item) | from_yaml }}"
+            host: "{{ ocp_api_url }}"
+            api_key: "{{ ocp_sno_api_key }}"
+            validate_certs: false
+          loop:
+            - manifests/ocp-config/ocp-oauth-secret.yml.j2
+            - manifests/ocp-config/ocp-oauth.yml.j2
+            - manifests/ocp-config/ocp-rolebinding.yml.j2
+
+        - name: Wait for operator update
+          kubernetes.core.k8s_info:
+            kind: Pod
+            namespace: openshift-authentication
+            host: "{{ ocp_api_url }}"
+            api_key: "{{ ocp_sno_api_key }}"
+            validate_certs: false
+            wait: true
+            wait_sleep: 20
+            label_selectors:
+              - app=oauth-openshift
