@@ -1,0 +1,24 @@
+---
+- name: Ensure VMs are shutdown
+  hosts: virtual_machines
+  gather_facts: false
+  tasks:
+  - name: VM Operation on vCenter
+    community.vmware.vmware_guest:
+      hostname: '{{ deploy_vsphere_host }}'
+      username: '{{ deploy_vsphere_user }}'
+      password: '{{ deploy_vsphere_password }}'
+      validate_certs: false
+      name: '{{ guest_hostname }}'
+      state: poweredoff
+    delegate_to: localhost
+
+  - name: VM Operation on vCenter
+    community.vmware.vmware_guest:
+      hostname: '{{ deploy_vsphere_host }}'
+      username: '{{ deploy_vsphere_user }}'
+      password: '{{ deploy_vsphere_password }}'
+      validate_certs: false
+      name: '{{ guest_hostname }}'
+      state: absent
+    delegate_to: localhost

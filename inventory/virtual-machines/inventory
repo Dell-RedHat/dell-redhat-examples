@@ -1,0 +1,16 @@
+# ATC-AMSTERDAM
+webserverA ansible_host=''
+webserverB ansible_host=''
+loadbalancer ansible_host=''
+
+[virtual_machines]
+webserverA
+webserverB
+loadbalancer
+
+[webservers]
+webserverA
+webserverB
+
+[haproxy]
+loadbalancer

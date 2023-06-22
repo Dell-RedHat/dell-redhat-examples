@@ -1,0 +1,13 @@
+## Host-specific variables for the current VM
+# guest_hostname: '' # Hostname of the VM
+# guest_memory: '' # Assigned RAM
+# guest_vcpu: '' # Assigned CPUs
+# guest_disksize: '' # Assigned disk space
+# guest_template: '' # Name of the templated available on on vCenter
+# guest_networks: # Networks to be attached to the VM
+#   - name: '' # Name of the network on vCenter
+#     ip: '' # Assigned IP - Mandatory if static type is chosen
+#     netmask: '' # Netmask - Mandatory if static type is chosen
+#     start_connected: '' # Boolean to start the network in connected state
+#     type: '' # Network config type, static or dhcp
+#     connected: true

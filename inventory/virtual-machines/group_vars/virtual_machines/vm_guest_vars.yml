@@ -1,0 +1,6 @@
+# # Variables file for guest OS groups
+# # It defines a customized list of users to create on the guests
+
+# users:
+#   - name: '' # Username
+#     password: '' # password for the user

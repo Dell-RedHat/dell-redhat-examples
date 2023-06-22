@@ -1,0 +1,35 @@
+---
+- name: Ensure VMs are instantiated
+  hosts: virtual_machines
+  gather_facts: false
+
+  tasks:
+    - name: Ping machines
+      ansible.builtin.ping:
+      register: ping_result
+      ignore_errors: true
+      ignore_unreachable: true
+
+    - name: Role for VM instance
+      ansible.builtin.include_role:
+        name: role_manage_vmware_instance
+      vars:
+        force: true
+        wanted_state: poweredon
+      when: ping_result.unreachable is defined and ping_result.unreachable
+
+- name: Check connection to guest OS
+  hosts: virtual_machines
+  gather_facts: false
+  tasks:
+    - name: Waiting for VM provisioning to end, it can take time!
+      ansible.builtin.wait_for_connection:
+        timeout: 4800
+        sleep: 30
+
+    - name: Ping host to check status
+      ansible.builtin.ping:
+
+    - name: Setup is ready
+      ansible.builtin.debug:
+        msg: "Setup completed, now you can proceed with post install steps"

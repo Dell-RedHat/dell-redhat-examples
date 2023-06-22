@@ -1,0 +1,7 @@
+# # Common variables for all groups
+# # It defines the common variables used by all groups for provisioning and managing hosts
+
+# satellite_host: '' # Satellite Hostname
+# satellite_ip: '' # Specify this var if no DNS entry is present and /etc/host configuration is needed - OPTIONAL
+# satellite_activation_key: '' # Activation key to be used for the guests
+# satellite_org_id: '' # Satellite organization

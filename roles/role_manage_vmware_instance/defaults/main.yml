@@ -1,0 +1,9 @@
+---
+# defaults file for role_manage_vmware_instance
+deploy_vsphere_host: ''
+deploy_vsphere_user: ''
+deploy_vsphere_password: ''
+deploy_vsphere_datacenter: ''
+deploy_vsphere_folder: ''
+deploy_target: ''
+# deploy_target needs to be sync'd with the cluster/esxi_hostname in the tasks/main.yml

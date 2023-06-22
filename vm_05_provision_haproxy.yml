@@ -1,0 +1,38 @@
+---
+- name: Gather facts from webservers
+  hosts: webservers
+
+- name: Provision HA Proxy instance
+  hosts: loadbalancer
+  become: true
+  tasks:
+    - name: Ensure haproxy package is installed
+      ansible.builtin.yum:
+        name: haproxy
+        state: present
+
+    - name: Ensure firewalld is running
+      ansible.builtin.service:
+        name: firewalld
+        state: started
+        enabled: true
+
+    - name: Ensure firewall ports are open for loadbalancer host
+      ansible.posix.firewalld:
+        port: "{{ item }}"
+        state: enabled
+      loop:
+        - 80/tcp
+        - 443/tcp
+
+    - name: Trigger haproxy template
+      ansible.builtin.template:
+        src: haproxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
+        mode: "0755"
+
+    - name: Ensure haproxy service is restarted
+      ansible.builtin.service:
+        name: haproxy
+        state: restarted
+        enabled: true

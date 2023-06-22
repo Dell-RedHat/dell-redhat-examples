@@ -1,0 +1,14 @@
+## Variables needed for vSphere operations on VMs
+# deploy_vsphere_host: '' # IP or Hostname of the vCenter/ESXi
+# deploy_vsphere_user: '' # Username of the vCenter/ESXi
+# deploy_vsphere_password: '' # Password of the vCenter/ESXi
+# deploy_target: '' # Name of the vCenter Cluster if using vCenter or ESXi hostname if using ESXi
+# deploy_vsphere_datacenter: '' # Datacenter in vSphere
+# deploy_vsphere_datastore: '' # Datastore to be used for the VMs
+# deploy_vsphere_folder: '' # VM Folder to be used, with trailing slash
+
+## VM related variables, can be overridden in host_vars for the single hosts
+
+# guest_dns_servers:  # List of DNS servers for the VMs
+#   - ''
+# guest_domain_name: '' # VMs domain name
