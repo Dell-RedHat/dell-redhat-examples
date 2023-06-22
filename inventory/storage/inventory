@@ -1,0 +1,11 @@
+[rhel_hosts]
+rh-demo07-os ansible_host=
+rh-demo10-os ansible_host=
+
+[flex]
+powerflex_mgmt ansible_host=
+powerflex_mdm ansible_host=
+
+[esxi]
+esxi_01 ansible_host=
+esxi_02 ansible_host=

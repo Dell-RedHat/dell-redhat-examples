@@ -1,0 +1,70 @@
+- name: Create the volume once the SDC is correctly setup
+  hosts: esxi
+  gather_facts: false
+  vars: 
+    - volumes_esxi: "{{ survey_volumes | from_yaml }}"
+  tasks:
+    - name: Create the SDC list for the volume
+      ansible.builtin.set_fact:
+        sdc_list: "{{ sdc_list | default([]) + [ {'sdc_name' : hostvars[item].sdc_hostname} ] }}"
+      loop: "{{ groups['esxi'] }}"
+      run_once: true
+
+    - name: Create and map a volume
+      dellemc.powerflex.volume:
+        gateway_host: "{{ FLEX_MGMT_IP }}"
+        username: "{{ FLEX_MGMT_USER }}"
+        password: "{{ FLEX_MGMT_PASS }}"
+        verifycert: false
+        vol_name: "{{ item.vol_name }}"
+        size: "{{ item.vol_size }}"
+        vol_type: "THIN_PROVISIONED"
+        storage_pool_name: "{{ item.vol_pool }}"
+        protection_domain_name: "{{ item.vol_pd }}"
+        sdc: "{{ sdc_list }}"
+        sdc_state: "mapped"
+        state: "present"
+        allow_multiple_mappings: true
+      run_once: true
+      delegate_to: localhost
+      register: volume_creation
+      loop: "{{ volumes_esxi }}"
+
+    - name: Recan HBA's for a given ESXi host and refresh storage system objects
+      community.vmware.vmware_host_scanhba:
+          hostname: '{{ vcenter_hostname }}'
+          username: '{{ vcenter_username }}'
+          password: '{{ vcenter_password }}'
+          esxi_hostname: '{{ inventory_hostname }}'
+          validate_certs: false
+          refresh_storage: true
+      delegate_to: localhost
+
+    - name: Gather info about ESXi drives Host
+      community.vmware.vmware_host_disk_info:
+        hostname: '{{ vcenter_hostname }}'
+        username: '{{ vcenter_username }}'
+        password: '{{ vcenter_password }}'
+        esxi_hostname: '{{ inventory_hostname }}'
+        validate_certs: false
+      delegate_to: localhost
+      register: esxi_disk_info
+
+    - name: Format and mount drive
+      community.vmware.vmware_host_datastore:
+        hostname: '{{ vcenter_hostname }}'
+        username: '{{ vcenter_username }}'
+        password: '{{ vcenter_password }}'
+        esxi_hostname: '{{ inventory_hostname }}'
+        validate_certs: false
+        datastore_type: "vmfs"
+        datastore_name: "{{item[1].volume_details.name}}"
+        vmfs_device_name: "{{item[0].canonical_name}}"
+        vmfs_version: 6
+        state: present
+      delegate_to: localhost
+      with_nested:
+        - "{{ esxi_disk_info.hosts_disk_info[inventory_hostname|string] }}"
+        - "{{ volume_creation.results }}"
+      when: "item[1].volume_details.id in item[0].display_name"
+      run_once: true

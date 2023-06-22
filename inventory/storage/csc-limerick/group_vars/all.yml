@@ -1,0 +1,20 @@
+---
+# MDM_IP: ''                  # IP Of the MetaData Manager
+# FLEX_MGMT_IP: ''            # IP of Powerflex management
+# FLEX_MGMT_USER: ''          # Powerflex Management username
+# FLEX_MGMT_PASS: ''          # Powerflex Management password
+# FLEX_MGMT_PORT: ''          # Powerflex Management port
+# sdc_hostname: ''            # SDC Hostname
+# vol_name: ''                # Volume name
+# vol_size: ''                # Volume size, it needs to be a multiple of 8GB
+# vol_pool: ''                # Volume pool
+# vol_pd: ''                  # Volume Protection domain
+# powerflex_subnet: ''        # IP Subnet Powerflex belongs to
+
+MDM_IP: 192.168.122.60
+FLEX_MGMT_IP: 192.168.122.44
+FLEX_MGMT_USER: "admin"
+FLEX_MGMT_PASS: "Password01!"
+FLEX_MGMT_PORT: 8443
+sdc_hostname: "{{ inventory_hostname }}_sdc"
+vol_name: "{{ inventory_hostname }}_vol"

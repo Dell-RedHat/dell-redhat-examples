@@ -1,0 +1,11 @@
+[rhel_hosts]
+rh-demo01 ansible_host=192.168.122.23
+rh-demo02 ansible_host=192.168.122.24
+
+[flex]
+powerflex_mgmt ansible_host=192.168.122.44
+powerflex_mdm ansible_host=192.168.122.60
+
+[esxi]
+rh-esxi-01.rh.csc.local ansible_host=192.168.122.21
+rh-esxi-02.rh.csc.local ansible_host=192.168.122.22

@@ -1,0 +1,204 @@
+---
+- name: Setup SDC on ESXI host
+  hosts: esxi
+  serial: 1
+  gather_facts: false
+  tasks:
+    - name: enable SSH
+      community.vmware.vmware_host_service_manager:
+        hostname: '{{ vcenter_hostname }}'
+        username: '{{ vcenter_username }}'
+        password: '{{ vcenter_password }}'
+        esxi_hostname: "{{ inventory_hostname }}"
+        service_name: TSM-SSH
+        state: present
+        validate_certs: false
+      delegate_to: localhost
+
+    - name: Change acceptance level #--server="{{ inventory_hostname }}"
+      ansible.builtin.shell: esxcli software acceptance set --level=PartnerSupported
+
+    - name: Copy SDC zip
+      ansible.builtin.copy:
+        src: sdc-3.6.400.105-esx7.x.zip
+        dest: /tmp/SDC.zip
+
+    - name: install SDC
+      ansible.builtin.shell: esxcli software component apply -d /tmp/SDC.zip -n scaleio-sdc-esx
+      register: installation_status
+
+    - name: reboot and do the config if required
+      when: "'Reboot Required: true' in installation_status.stdout"
+      delegate_to: localhost
+      block:
+        - name: Put host in maintenance mode
+          community.vmware.vmware_maintenancemode:
+            hostname: '{{ vcenter_hostname }}'
+            username: '{{ vcenter_username }}'
+            password: '{{ vcenter_password }}'
+            esxi_hostname: "{{ inventory_hostname }}"
+            state: present
+            validate_certs: false
+
+        - name: Reboot to load SDC driver
+          community.vmware.vmware_host_powerstate:
+            hostname: '{{ vcenter_hostname }}'
+            username: '{{ vcenter_username }}'
+            password: '{{ vcenter_password }}'
+            esxi_hostname: "{{ inventory_hostname }}"
+            state: reboot-host
+            validate_certs: false
+
+        - name: Wait for reboot host
+          ansible.builtin.wait_for:
+            port: 443
+            host: '{{ ansible_host }}'
+            delay: 120
+            sleep: 10
+            timeout: 500
+          delegate_facts: true
+
+        - name: Use host facts to check connected status
+          community.vmware.vmware_host_facts:
+            hostname: '{{ vcenter_hostname }}'
+            username: '{{ vcenter_username }}'
+            password: '{{ vcenter_password }}'
+            esxi_hostname: '{{ inventory_hostname }}'
+            validate_certs: false
+          register: esxi_host_facts
+          until: esxi_host_facts.ansible_facts is defined and esxi_host_facts.ansible_facts.ansible_host_connection_state == 'connected'
+          retries: 20
+          delay: 5
+
+        - name: enable SSH again
+          community.vmware.vmware_host_service_manager:
+            hostname: '{{ vcenter_hostname }}'
+            username: '{{ vcenter_username }}'
+            password: '{{ vcenter_password }}'
+            esxi_hostname: "{{ inventory_hostname }}"
+            service_name: TSM-SSH
+            state: present
+            validate_certs: false
+          ignore_errors: true
+
+    - name: get UUID
+      ansible.builtin.shell: esxcli system uuid get
+      register: uuid_esxi
+
+    - name: Config SDC
+      ansible.builtin.shell: esxcli system module parameters set -m scini -p "IoctlIniGuidStr={{uuid_esxi.stdout}} IoctlMdmIPStr={{MDM_IP}}"
+
+    - name: Backup the parameters
+      ansible.builtin.shell: /bin/auto-backup.sh
+
+    - name: Put host in maintenance mode
+      community.vmware.vmware_maintenancemode:
+        hostname: '{{ vcenter_hostname }}'
+        username: '{{ vcenter_username }}'
+        password: '{{ vcenter_password }}'
+        esxi_hostname: "{{ inventory_hostname }}"
+        state: present
+        validate_certs: false
+      delegate_to: localhost
+
+    - name: Reboot to load the parameters
+      community.vmware.vmware_host_powerstate:
+        hostname: '{{ vcenter_hostname }}'
+        username: '{{ vcenter_username }}'
+        password: '{{ vcenter_password }}'
+        esxi_hostname: "{{ inventory_hostname }}"
+        state: reboot-host
+        validate_certs: false
+      delegate_to: localhost
+
+    - name: Wait for reboot host
+      ansible.builtin.wait_for:
+        port: 443
+        host: '{{ ansible_host }}'
+        delay: 120
+        sleep: 10
+        timeout: 500
+      delegate_to: localhost
+      delegate_facts: true
+
+    - name: Use host facts to check connected status and wait for host to be up
+      community.vmware.vmware_host_facts:
+        hostname: '{{ vcenter_hostname }}'
+        username: '{{ vcenter_username }}'
+        password: '{{ vcenter_password }}'
+        esxi_hostname: '{{ inventory_hostname }}'
+        validate_certs: false
+      delegate_to: localhost
+      register: esxi_host_facts
+      until: esxi_host_facts.ansible_facts is defined and esxi_host_facts.ansible_facts.ansible_host_connection_state == 'connected'
+      retries: 20
+      delay: 5
+
+    - name: Enable SSH again
+      community.vmware.vmware_host_service_manager:
+        hostname: '{{ vcenter_hostname }}'
+        username: '{{ vcenter_username }}'
+        password: '{{ vcenter_password }}'
+        esxi_hostname: "{{ inventory_hostname }}"
+        service_name: TSM-SSH
+        state: present
+        validate_certs: false
+      delegate_to: localhost
+      ignore_errors: yes
+
+    - name: Confirm driver load
+      ansible.builtin.shell: "vmkload_mod -l"
+      register: vmkload_mod
+
+    - name: remove maintenance mode
+      community.vmware.vmware_maintenancemode:
+        hostname: '{{ vcenter_hostname }}'
+        username: '{{ vcenter_username }}'
+        password: '{{ vcenter_password }}'
+        esxi_hostname: "{{ inventory_hostname }}"
+        state: absent
+        validate_certs: false
+      delegate_to: localhost
+
+    - name: Gather info about ESXi Host to get IP list
+      community.vmware.vmware_vmkernel_info:
+        hostname: '{{ vcenter_hostname }}'
+        username: '{{ vcenter_username }}'
+        password: '{{ vcenter_password }}'
+        esxi_hostname: '{{ inventory_hostname }}'
+        validate_certs: false
+      delegate_to: localhost
+      register: vmkernel_data
+
+    - name: Set a fact for ipv4 address on the powerflex subnet
+      set_fact:
+        ipv4_powerflex: "{{ item.ipv4_address }}"
+      loop: "{{ vmkernel_data.host_vmk_info[inventory_hostname|string] }}"
+      loop_control:
+        index_var: daindex
+      when: item.ipv4_address | ansible.utils.ipaddr(powerflex_subnet)
+
+    - name: check SDC list
+      dellemc.powerflex.sdc:
+        gateway_host: "{{ FLEX_MGMT_IP }}"
+        username: "{{ FLEX_MGMT_USER }}"
+        password: "{{ FLEX_MGMT_PASS }}"
+        verifycert: false
+        sdc_ip: "{{ ipv4_powerflex }}"
+        state: "present"
+      delegate_to: localhost
+      register: sdc_output
+
+
+    - name: Rename SDC to hostname if not already done
+      dellemc.powerflex.sdc:
+        gateway_host: "{{ FLEX_MGMT_IP }}"
+        username: "{{ FLEX_MGMT_USER }}"
+        password: "{{ FLEX_MGMT_PASS }}"
+        verifycert: false
+        sdc_ip: "{{ ipv4_powerflex }}"
+        sdc_new_name: "{{ sdc_hostname }}"
+        state: "present"
+      delegate_to: localhost
+      when: sdc_output.sdc_details.name != sdc_hostname
+

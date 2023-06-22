@@ -1,0 +1,25 @@
+# vcenter_hostname: ''        # vCenter hostname/IP
+# vcenter_username: ''        # vCenter admin username
+# vcenter_password: ''        # vCenter admin password
+# ansible_ssh_user:           # ESXI root user
+# volumes_esxi:               # List of volumes to define on ESXI
+#   - vol_name: ""            # Volume name
+#     vol_size:               # Volume size
+#     vol_pool: ""            # Volume pool
+#     vol_pd: ""              # Volume Protection Domain
+
+
+vcenter_hostname: rh-vcsa.rh.csc.local
+vcenter_username: 'administrator@redhat.local'
+vcenter_password: 'Password01!'
+ansible_ssh_user: 'root'
+ansible_ssh_pass: 'Password01!'
+volumes_esxi:
+  - vol_size: 256
+    vol_pool: "PD01_MG01"
+    vol_pd: "PD01"
+    vol_name: "vol01_demo"
+  - vol_size: 256
+    vol_pool: "PD01_MG01"
+    vol_pd: "PD01"
+    vol_name: "vol02_demo"

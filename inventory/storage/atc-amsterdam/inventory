@@ -1,0 +1,11 @@
+[rhel_hosts]
+rh-demo07-os ansible_host=10.0.122.140
+rh-demo10-os ansible_host=10.0.122.143
+
+[flex]
+powerflex_mgmt ansible_host=10.0.10.49
+powerflex_mdm ansible_host=10.0.10.50
+
+[esxi]
+rh-demo08-esxi.dell-atc.lan ansible_host=10.0.122.133
+rh-demo09-esxi.dell-atc.lan ansible_host=10.0.122.134

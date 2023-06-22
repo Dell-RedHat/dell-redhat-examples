@@ -1,0 +1,103 @@
+---
+- name: Remove SDC on ESXI host
+  hosts: esxi
+  serial: 1
+  gather_facts: false
+  vars:
+    clean_powerflex_sdc: true
+  tasks:
+    - name: Enable SSH on HSM
+      community.vmware.vmware_host_service_manager:
+        hostname: '{{ vcenter_hostname }}'
+        username: '{{ vcenter_username }}'
+        password: '{{ vcenter_password }}'
+        esxi_hostname: "{{ inventory_hostname }}"
+        service_name: TSM-SSH
+        state: present
+        validate_certs: false
+      delegate_to: localhost
+
+    - name: Remove SDC
+      ansible.builtin.shell: esxcli software component remove -n scaleio-sdc-esx
+      ignore_errors: true
+      register: component_removal
+
+    - name: Continue operations if SDC was uninstalled
+      delegate_to: localhost
+      when: not "Component scaleio-sdc-esx is not found in the current image profile" in component_removal.stdout_lines
+      block:
+        - name: Put host in maintenance mode
+          community.vmware.vmware_maintenancemode:
+            hostname: '{{ vcenter_hostname }}'
+            username: '{{ vcenter_username }}'
+            password: '{{ vcenter_password }}'
+            esxi_hostname: "{{ inventory_hostname }}"
+            state: present
+            validate_certs: false
+
+        - name: Reboot to unload SDC
+          community.vmware.vmware_host_powerstate:
+            hostname: '{{ vcenter_hostname }}'
+            username: '{{ vcenter_username }}'
+            password: '{{ vcenter_password }}'
+            esxi_hostname: "{{ inventory_hostname }}"
+            state: reboot-host
+            validate_certs: false
+
+        - name: Wait for reboot host
+          ansible.builtin.wait_for:
+            port: 443
+            host: '{{ ansible_host }}'
+            delay: 120
+            sleep: 10
+            timeout: 500
+
+        - name: Pause for SSH & host to completely boot up
+          ansible.builtin.pause:
+            minutes: 2
+
+        - name: remove maintenance mode
+          community.vmware.vmware_maintenancemode:
+            hostname: '{{ vcenter_hostname }}'
+            username: '{{ vcenter_username }}'
+            password: '{{ vcenter_password }}'
+            esxi_hostname: "{{ inventory_hostname }}"
+            state: absent
+            validate_certs: false
+
+    - delegate_to: localhost
+      when: clean_powerflex_sdc
+      block:
+        - name: Get SDC id
+          dellemc.powerflex.sdc:
+            gateway_host: "{{ FLEX_MGMT_IP }}"
+            username: "{{ FLEX_MGMT_USER }}"
+            password: "{{FLEX_MGMT_PASS}}"
+            verifycert: false
+            sdc_name: "{{ sdc_hostname }}"
+            state: present
+          register: sdc_output
+
+        - name: Get token
+          ansible.builtin.uri:
+            url: "https://{{ FLEX_MGMT_IP }}/api/login"
+            method: GET
+            force_basic_auth: yes
+            user: "{{ FLEX_MGMT_USER }}"
+            password: "{{FLEX_MGMT_PASS}}"
+            validate_certs: no
+            return_content: yes
+          register: token
+
+        - name: Remove SDC entry from Powerflex
+          ansible.builtin.uri:
+            url: "https://{{ FLEX_MGMT_IP }}/api/instances/Sdc::{{sdc_output.sdc_details.id}}/action/removeSdc"
+            method: POST
+            force_basic_auth: yes
+            user: "{{ FLEX_MGMT_USER }}"
+            password: "{{ token.json }}"
+            headers:
+              Content: "application/json"
+            # Header to setup with token here.
+            validate_certs: false
+            return_content: true

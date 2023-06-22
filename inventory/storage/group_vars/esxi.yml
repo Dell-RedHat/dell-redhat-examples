@@ -1,0 +1,9 @@
+# vcenter_hostname: ''        # vCenter hostname/IP
+# vcenter_username: ''        # vCenter admin username
+# vcenter_password: ''        # vCenter admin password
+# ansible_ssh_user:           # ESXI root user
+# volumes_esxi:               # List of volumes to define on ESXI
+#   - vol_name: ""            # Volume name
+#     vol_size:               # Volume size
+#     vol_pool: ""            # Volume pool
+#     vol_pd: ""              # Volume Protection Domain
