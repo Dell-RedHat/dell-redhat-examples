@@ -1,0 +1,26 @@
+- name: Backing up current switch config.
+  dellemc.enterprise_sonic.sonic_config:
+    backup: true
+  register: _backup
+
+- name: Setting backup source file path
+  ansible.builtin.set_fact:
+    backup_file: "{{ _backup.backup_path }}"
+
+- name: Configure folders on backup hosts
+  delegate_to: nfs_server
+  connection: ssh
+  block:
+    - name: Ensure backup directory exists on backup host
+      ansible.builtin.file:
+        path: "{{ sonic_backup_path | default('/opt/sonic-backups', true) }}"
+        state: directory
+        mode: 0755
+        owner: root
+        group: root
+
+    - name: Copy backup files to backup host
+      ansible.builtin.copy:
+        src: "{{ backup_file }}"
+        dest: "{{ sonic_backup_path | default('/opt/sonic-backups', true) }}/{{ sonic_backup_archive_filename | default(inventory_hostname + '_config') }}"
+        mode: 0644

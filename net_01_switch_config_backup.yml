@@ -1,0 +1,12 @@
+---
+- name: Dell switches configuration backup
+  hosts: dell_switches
+  gather_facts: true
+  connection: network_cli
+
+  tasks:
+    - name: Include role to backup the configuration
+      ansible.builtin.include_role:
+        name: sonic_backup_restore
+      vars:
+        sonic_config_backup: true

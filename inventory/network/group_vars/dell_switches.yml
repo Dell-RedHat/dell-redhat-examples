@@ -1,0 +1,3 @@
+---
+# sonic_backup_path: '' - Path for the produced backup file            defaults to /opt/sonic-backups
+# sonic_backup_archive_filename: '' Archive name for the backup          defaults to"{{ inventory_hostname }}_config"

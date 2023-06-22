@@ -1,0 +1,9 @@
+---
+- name: Dell VLAN Management Demo
+  hosts: dell_switches
+  gather_facts: false
+  connection: httpapi
+  tasks:
+    - name: Include role to configure port access
+      ansible.builtin.include_role:
+        name: sonic_manage_vlan_access_mode

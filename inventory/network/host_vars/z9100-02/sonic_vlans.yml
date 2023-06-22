@@ -1,0 +1,12 @@
+# This is a yaml list of all vlans to be created.
+# sonic_vlans:
+#   - vlan_id: Id of the VLAN to be created/delete
+#   - deletable: true/false - Safety check to prevent deletion of crucial VLANs
+
+# sonic_vlans:
+#   - vlan_id: id_of_vlan_1
+#     deletable: false
+#   - vlan_id: id_of_vlan_2
+#     deletable: false
+#   - vlan_id: 42
+#     deletable: false

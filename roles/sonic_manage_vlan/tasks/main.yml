@@ -1,0 +1,12 @@
+---
+# tasks file for dellemc.enterprise_sonic.sonic_vlans
+- name: check device reachability
+  ansible.builtin.ping:
+
+- name: Create a VLANs
+  dellemc.enterprise_sonic.sonic_vlans:
+    config:
+      - vlan_id: "{{ item.vlan_id }}"
+    state: "{{ 'deleted' if sonic_vlan_delete | default('merged', true) }}"
+  register: sonic_vlans_output
+  loop: "{{ sonic_vlans }}"

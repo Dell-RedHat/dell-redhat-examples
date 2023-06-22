@@ -1,0 +1,16 @@
+---
+- name: Dell VLAN Management Demo
+  hosts: dell_switches
+  gather_facts: false
+  connection: httpapi
+
+  tasks:
+    - name: Gather all facts
+      dellemc.enterprise_sonic.sonic_facts:
+        gather_subset: all
+        gather_network_resources: all
+      register: network_facts
+
+    - name: Print facts
+      ansible.builtin.debug:
+        var: network_facts

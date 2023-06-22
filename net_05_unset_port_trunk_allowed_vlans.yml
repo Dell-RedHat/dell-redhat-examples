@@ -1,0 +1,11 @@
+---
+- name: Dell VLAN Management Demo
+  hosts: dell_switches
+  gather_facts: false
+  connection: httpapi
+  tasks:
+    - name: Include role to configure trunk mode
+      ansible.builtin.include_role:
+        name: sonic_manage_vlan_trunk_mode
+      vars:
+        sonic_remove_trunk_mode: true

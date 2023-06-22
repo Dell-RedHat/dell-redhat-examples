@@ -1,0 +1,29 @@
+### ATC-AMSTERDAM
+
+z9100-01 ansible_host=10.0.120.21
+z9100-02 ansible_host=10.0.120.22
+z9100-03 ansible_host=10.0.120.23
+z9100-04 ansible_host=10.0.120.24
+
+
+[mclag_1]
+z9100-01
+z9100-02
+
+[mclag_2]
+z9100-03
+z9100-04
+
+[dell_switches]
+z9100-01
+#z9100-02
+z9100-03
+#z9100-04
+
+[backup_host]
+nfs_server ansible_host=10.0.120.210 ansible_user=root ansible_ssh_pass=delldell
+
+[dell_switches:vars]
+ansible_network_os=dellemc.enterprise_sonic.sonic
+ansible_httpapi_use_ssl=true
+ansible_httpapi_validate_certs= false

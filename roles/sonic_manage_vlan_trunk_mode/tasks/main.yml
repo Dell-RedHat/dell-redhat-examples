@@ -1,0 +1,17 @@
+---
+# tasks/main.yml file for role sonic_vlan_assign_l2_interfaces
+
+- name: Checking connectivity to switch
+  ansible.builtin.ping:
+
+- name: Configuring switch port to trunk and allowed vlans
+  dellemc.enterprise_sonic.sonic_l2_interfaces:
+    config:
+      - name: "{{ item.0.name }}"
+        trunk:
+          allowed_vlans:
+            - vlan: "{{ item.1 }}"
+    state: "{{ 'deleted' if sonic_remove_trunk_mode | default('merged', true) }}"
+  with_subelements:
+    - "{{ sonic_interfaces }}"
+    - "{{ 'unallowed_vlans' if sonic_remove_trunk_mode | default('allowed_vlans', true) }}"

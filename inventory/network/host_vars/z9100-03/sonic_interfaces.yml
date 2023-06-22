@@ -1,0 +1,17 @@
+---
+# This is a yaml list of interfaces for trunk/port access configuration
+# sonic_interfaces:
+#   - name: Name of the interface to perform the operation on
+#     access_vlan: VLAN to be configured in access mode
+#     allowed_vlans: List of LANS to be configured in trunk mode
+#     unallowed_vlans: List of LANS to be removed in trunk mode
+
+# sonic_interfaces:
+#   - name: interface_name
+#     access_vlan: vlan_id
+#     allowed_vlans:
+#       - vlan_id_1
+#       - vlan_id_2
+#     unallowed_vlans:
+#       - vlan_id_1
+#       - vlan_id_2

@@ -1,0 +1,5 @@
+mclag_po_members:
+  - member: Eth1/29
+  - member: Eth1/32
+
+mclag_peer_address: "{{ hostvars['z9100-03']['ansible_facts']['ansible_host'] }}"

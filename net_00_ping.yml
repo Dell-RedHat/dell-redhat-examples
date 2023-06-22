@@ -1,0 +1,9 @@
+---
+- name: Dell VLAN Management Demo
+  hosts: dell_switches
+  gather_facts: false
+  connection: httpapi
+
+  tasks:
+    - name: Ping switches
+      ansible.builtin.ping:

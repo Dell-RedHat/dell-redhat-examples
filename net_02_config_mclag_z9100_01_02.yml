@@ -1,0 +1,46 @@
+---
+- name: Setup MCLag between switches z9100-01 & z9100-02
+  hosts: z9100-01,z9100-02
+  gather_facts: false
+  # connection: network_cli
+  connection: httpapi
+  tasks:
+    - name: Confirm we are using standard naming
+      dellemc.enterprise_sonic.sonic_config:
+        commands:
+          - command: "interface-naming standard"
+            prompt: "Broadcast message: Interface naming mode has changed. Users running 'sonic-cli' are required to restart your session."
+            answer: "\n"
+
+    - name: Reset ssh connection
+      ansible.builtin.meta: reset_connection
+
+    - name: Create the port channel used for the switch interconnection
+      dellemc.enterprise_sonic.sonic_lag_interfaces:
+        config:
+          - name: "PortChannel{{ mclag_po_number }}"
+            members:
+              interfaces: "{{ mclag_po_members }}"
+            mode: lacp
+        state: merged
+
+    - name: Setup the Po to accept all VLANs as trunk
+      dellemc.enterprise_sonic.sonic_l2_interfaces:
+        config:
+          - name: "PortChannel{{ mclag_po_number }}"
+            trunk:
+              allowed_vlans:
+                - vlan: all
+        state: merged
+
+    - name: Setup the MCLag between the 2 switches
+      dellemc.enterprise_sonic.sonic_mclag:
+        config:
+          domain_id: "{{ mclag_domain_id }}"
+          members:
+            portchannels:
+              lag: "{{ mclag_po_number }}"
+          source_address: "{{ ansible_host }}"
+          peer_address: "{{ mclag_peer_address }}"
+          peer_link: "{{ mclag_po_number }}"
+          system_mac: "{{ mclag_system_mac }}"

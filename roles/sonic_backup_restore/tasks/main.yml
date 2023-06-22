@@ -1,0 +1,10 @@
+---
+- name: Include backup tasks
+  when: sonic_config_backup
+  ansible.builtin.include_tasks:
+    file: sonic_backup_yml
+
+- name: Include restore tasks
+  when: sonic_config_restore
+  ansible.builtin.include_tasks:
+    file: sonic_restore.yml

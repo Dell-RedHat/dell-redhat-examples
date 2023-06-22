@@ -1,0 +1,22 @@
+- name: Set backup host vars as fact
+  ansible.builtin.set_fact:
+    backup_vars: "{{ hostvars['backup_host'] }}"
+
+- name: Restoring switch config from backup.
+  dellemc.enterprise_sonic.sonic_command:
+    commands:
+      - copy scp://{{ backup_vars.ansible_user }}:{{ backup_vars.ansible_password }}@{{ backup_vars.ansible_host }}{{ sonic_backup_path | default('/opt/sonic-backups', true) }}/{{ sonic_backup_archive_filename | default(inventory_hostname + '_config') }} startup-configuration
+
+- name: Restarting switch.
+  dellemc.enterprise_sonic.sonic_command:
+    commands: reboot force yes
+  vars:
+    ansible_command_timeout: 15
+  ignore_errors: true
+
+- name: Wait for device to come back online
+  ansible.builtin.wait_for:
+    host: "{{ inventory_hostname }}"
+    port: 22
+    delay: 90
+  delegate_to: localhost
