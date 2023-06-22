@@ -1,0 +1,75 @@
+---
+- name: Clear iDRACs from OME after demo
+  hosts: ome
+  gather_facts: false
+  connection: local
+  vars: 
+    idrac_user: "root" # To replace with survey question
+    idrac_pass: "Notcalvin" # To replace with survey question
+    idracs_to_delete:
+      - 6B9SS33
+      - 7B9SS33
+      - 8B9SS33
+      - 9B9SS33
+  tasks:
+    - name: Remove devices using servicetags
+      dellemc.openmanage.ome_devices:
+        hostname: "{{ ansible_host }}"
+        username: "{{ ome_user }}"
+        password: "{{ ome_pass }}"
+        validate_certs: false
+        state: absent
+        device_service_tags: "{{ idracs_to_delete }}"
+
+    - name: Generate the content of the iDRAC announced list
+      ansible.builtin.uri:
+        url: https://{{ ansible_host }}/api/DiscoveryConfigService/SignaledNodes
+        force_basic_auth: true
+        user: "{{ ome_user }}"
+        password: "{{ ome_pass }}"
+        validate_certs: false
+      register: announced_hosts
+
+    - name: Debug announced_hosts
+      ansible.builtin.debug:
+        var: announced_hosts
+    
+    - name: Set the list of ids to delete
+      ansible.builtin.set_fact:
+        ids_to_delete: "{{ (ids_to_delete | default([])) + [item.Id] }}"
+      loop: "{{ announced_hosts.json.value }}"
+      when: item.ServiceTag in idracs_to_delete
+
+    - name: Delete the Signaled Nodes
+      ansible.builtin.uri:
+        url: https://{{ ansible_host }}/api/DiscoveryConfigService/Actions/DiscoveryConfigService.DeleteSignaledNodes
+        method: POST
+        body_format: "json"
+        force_basic_auth: true
+        body: "{ 'NodeId': {{ ids_to_delete }}}"
+        user: "{{ ome_user }}"
+        password: "{{ ome_pass }}"
+        validate_certs: false
+      when: ids_to_delete is defined
+
+- name: Reset iDRAC
+  hosts: ome
+  connection: local
+  gather_facts: false
+  vars:
+    idracs_to_reset: 
+      - 192.168.122.12
+      - 192.168.122.13
+      - 192.168.122.14
+      - 192.168.122.15
+    idrac_user: "root"
+    idrac_pass: "Notcalvin"
+  tasks:
+    - name: Reset iDRACs 
+      dellemc.openmanage.idrac_reset:
+        idrac_ip: "{{ item }}"
+        idrac_user: "{{ idrac_user }}"
+        idrac_password: "{{ idrac_pass }}"
+        validate_certs: false
+      loop: "{{ idracs_to_reset }}"
+      delegate_to: localhost

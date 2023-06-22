@@ -1,0 +1,68 @@
+---
+- name: Use the server-initiated discovery results
+  hosts: ome
+  gather_facts: false
+  connection: local
+  vars: 
+    idrac_user: "{{ survey_idrac_user }}" 
+    idrac_pass: "{{ survey_idrac_pass }}" 
+  tasks:
+    - name: Generate the content of the iDRAC announced list
+      ansible.builtin.uri:
+        url: https://{{ ansible_host }}/api/DiscoveryConfigService/SignaledNodes
+        force_basic_auth: true
+        user: "{{ ome_user }}"
+        password: "{{ ome_pass }}"
+        validate_certs: false
+      register: announced_hosts
+
+    - name: Generate the json body
+      ansible.builtin.template:
+        src: idrac_credentials.j2
+        dest: /tmp/idrac_credentials
+
+    - name: Read json 
+      ansible.builtin.debug:
+        msg: "{{ lookup('file','/tmp/idrac_credentials') }}"
+
+    - name: Push the credentials to OME
+      ansible.builtin.uri:
+        url: https://{{ ansible_host }}/api/DiscoveryConfigService/Actions/DiscoveryConfigService.UploadNodeInfo
+        method: POST
+        body_format: "json"
+        force_basic_auth: true
+        body: "{{ lookup('file','/tmp/idrac_credentials') }}"
+        user: "{{ ome_user }}"
+        password: "{{ ome_pass }}"
+        validate_certs: false
+        
+    - name: Get discoverable nodes
+      ansible.builtin.uri:
+        url: https://{{ ansible_host }}/api/DiscoveryConfigService/SignaledNodes
+        force_basic_auth: true
+        user: "{{ ome_user }}"
+        password: "{{ ome_pass }}"
+        validate_certs: false
+      register: discoverable_hosts
+
+    - name: Display only discoverable nodes
+      ansible.builtin.debug:
+        var: discoverable_hosts
+
+    # - name: Create dynamic list of iDRACs to reset to discover
+    #   ansible.builtin.set_fact:
+    #     idracs_list: "{{ (idracs_list | default([])) + [item.Ipv4Address]  }}"
+    #   loop: "{{ discoverable_hosts.json.value }}"
+
+    # - name: Print iDRACs to reset list
+    #   ansible.builtin.debug:
+    #     var: idracs_list
+
+    # - name: Reset iDRACs 
+    #   dellemc.openmanage.idrac_reset:
+    #     idrac_ip: "{{ item }}"
+    #     idrac_user: "{{ idrac_user }}"
+    #     idrac_password: "{{ idrac_pass }}"
+    #     validate_certs: false
+    #   loop: "{{ idracs_list }}"
+    #   delegate_to: localhost

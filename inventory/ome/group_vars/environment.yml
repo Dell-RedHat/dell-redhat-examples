@@ -1,0 +1,15 @@
+# # Common variables for all groups
+# # It defines the common variables used by all groups for provisioning and managing hosts
+
+# satellite_host: '' # Satellite Hostname
+# satellite_ip: '' # Specify this var if no DNS entry is present and /etc/host configuration is needed - OPTIONAL
+# satellite_activation_key: '' # Activation key to be used for the guests
+# satellite_org_id: '' # Satellite organization
+
+# # It defines the location and the name of the ISOs that should be deployed on the servers
+# idrac_nfs_host: '' # Hostname or IP of the NFS/CIFS share
+# idrac_nfs_share: '' # Path of the NFS/CIFS share
+
+# ### ISO Sources on the bastion host.
+# rhel_iso: '' # ISO filename for RHEL setup, must be placed into the specified nfs_share folder
+# esxi_iso: '' # ISO filename for ESXi setup, must be placed into the specified nfs_share folder

@@ -1,0 +1,9 @@
+# # Variables file for baremetal hosts
+
+# #### Optional ####
+# idrac_ip: '' # IP of the iDRAC - Defaults to ansible_host
+# idrac_username: '' # Username for the iDRAC - Defaults to ansible_username
+# idrac_password: '' # Password for the iDRAC - Defaults to ansible_password
+# idrac_validate_certs: '' # Boolean for certificate validation - Defaults to false
+# idrac_ca_path: '' # Path to the CA PEM to verify certs - Mandatory if validate_certs is true
+# idrac_expose_duration: 300 # Exposure time for the ISO before being detached by the host - Defaults to 300

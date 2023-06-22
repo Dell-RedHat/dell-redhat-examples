@@ -1,0 +1,38 @@
+---
+- name: Remediate compliance for Auto Webserver name Baseline
+  hosts: ome
+  gather_facts: false
+  connection: local
+  tasks:
+    - name: Refresh inventory details before remediation
+      ansible.builtin.uri:
+        url: https://{{ ansible_host }}/api/JobService/Actions/JobService.RunJobs
+        method: POST
+        body_format: "json"
+        force_basic_auth: true
+        body: '{ "JobIds": [10831, 10832] }'
+        user: "{{ ome_user }}"
+        password: "{{ ome_pass }}"
+        validate_certs: false
+        status_code: [ 200, 204 ]
+
+    - name: Wait for inventory task to finish
+      dellemc.openmanage.ome_job_info:
+        hostname: "{{ ansible_host }}"
+        username: "{{ ome_user }}"
+        password: "{{ ome_pass }}"
+        validate_certs: "{{ validate_certs }}"
+        job_id: 10832
+      register: job_details
+      until: '"Completed" in job_details.job_info.LastRunStatus.Name'
+      retries: 50
+      delay: 5
+
+    - name: Remediate all the non-compliant devices to a configuration compliance baseline
+      dellemc.openmanage.ome_configuration_compliance_baseline:
+        hostname: "{{ ansible_host }}"
+        username: "{{ ome_user }}"
+        password: "{{ ome_pass }}"
+        validate_certs: "{{ validate_certs }}"
+        command: "remediate"
+        names: "Demo - Auto Title Bar"

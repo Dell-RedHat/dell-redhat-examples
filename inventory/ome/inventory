@@ -1,0 +1,17 @@
+[nfs_servers]
+nfs_server ansible_host=
+
+[baremetal_hosts]
+idrac_01 ansible_host=
+idrac_02 ansible_host=
+
+[rhel_hosts]
+rhel_host_01 ansible_host=
+
+[satellite]
+satellite_host ansible_host=
+
+[environment:children]
+rhel_hosts
+baremetal_hosts
+nfs_servers

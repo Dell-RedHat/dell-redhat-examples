@@ -1,0 +1,33 @@
+# # Variables file for each baremetal host, can override group_vars
+# # It defines the location and the name of the ISOs that should be deployed on the servers
+
+# idrac_nfs_host: '' # Hostname or IP of the NFS/CIFS share
+# idrac_nfs_share: '' # Path of the NFS/CIFS share
+# #### Optional ####
+# idrac_ip: '' # IP of the iDRAC - Defaults to ansible_host
+# idrac_username: '' # Username for the iDRAC - Defaults to ansible_username
+# idrac_password: '' # Password for the iDRAC - Defaults to ansible_password
+# idrac_validate_certs: '' # Boolean for certificate validation - Defaults to false
+# idrac_ca_path: '' # Path to the CA PEM to verify certs - Mandatory if validate_certs is true
+# idrac_expose_duration: 300 # Exposure time for the ISO before being detached by the host - Defaults to 300
+
+# ### ISO Sources on the bastion host.
+# rhel_iso: '' # ISO filename for RHEL setup, must be placed into the specified nfs_share folder
+# esxi_iso: '' # ISO filename for ESXi setup, must be placed into the specified nfs_share folder
+
+# # It defines the kickstart variables to be used during the installation
+# ks_lang: '' # System language - Optional, defaults to en_US
+# ks_keyboard: '' # Keyboard layout - Optional, defaults to us
+# ks_timezone: '' # Timezone - Optional, defaults to Europe/Amsterdam
+# ks_rootpw: '' # Plaintext password for the root user - Optional, defaults to redhat
+# ks_disk: '' # Block device to be used for the installation - Optional, defaults to sda
+# ks_hostname: '' # Guest hostname - Mandatory
+# ks_interfaces: # List of configured interfaces
+#   - network_device: '' # Device name
+#     ip: '' # IP of the interface - Optional, if set, other fields are mandatory for static configuration. If not set, DHCP will be used
+#     netmask: '' # Netmask of the interface
+#     gateway: '' # Gateway for the interface
+#     nameserver: '' # Nameserver for the interface
+#     primary: true/false # Boolean to check whether or not the hostname must be set
+#   - network_device: ''
+#     vlanid: '' # Vlan ID for the device - Optional

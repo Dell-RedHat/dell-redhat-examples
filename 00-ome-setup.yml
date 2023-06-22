@@ -1,0 +1,41 @@
+---
+- name: First persistent OME setup. 
+  hosts: ome
+  gather_facts: false
+  connection: local
+  vars: 
+    idrac_user: "root" # To replace with survey question
+    idrac_pass: "Notcalvin" # To replace with survey question
+  tasks:
+    - name: Generate the json body
+      ansible.builtin.template:
+        src: idrac_credentials.j2
+        dest: /tmp/idrac_credentials
+
+    - name: Read json 
+      ansible.builtin.debug:
+        msg: "{{ lookup('file','/tmp/idrac_credentials') }}"
+
+    - name: Push the credentials to OME
+      ansible.builtin.uri:
+        url: https://{{ ansible_host }}/api/DiscoveryConfigService/Actions/DiscoveryConfigService.UploadNodeInfo
+        method: POST
+        body_format: "json"
+        force_basic_auth: true
+        body: "{{ lookup('file','/tmp/idrac_credentials') }}"
+        user: "{{ ome_user }}"
+        password: "{{ ome_password }}"
+        validate_certs: false
+        
+    - name: Get discoverable nodes
+      ansible.builtin.uri:
+        url: https://{{ ansible_host }}/api/DiscoveryConfigService/SignaledNodes
+        force_basic_auth: true
+        user: "{{ ome_user }}"
+        password: "{{ ome_password }}"
+        validate_certs: false
+      register: discoverable_hosts
+
+    - name: Display only discoverable nodes
+      ansible.builtin.debug:
+        var: discoverable_hosts
